@@ -1,0 +1,250 @@
+MANUAL DEL PROYECTO - HEART DISEASE PREDICTION MLOps
+================================================================
+
+Para dividir el proyecto y hacerlo más organizado, lo ejecutamos en 6 etapas
+
+ESTRUCTURA COMPLETA DEL PROYECTO
+====================================
+heart_disease_proyect/
+├── Notebooks (Análisis y Modelado)
+│   ├── 0_fix_models.ipynb                 --> Corrección de modelos
+│   ├── 1_model_leakage_demo.ipynb         --> Data Leakage
+│   ├── 2_model_pipeline_cv.ipynb          --> Pipeline CV
+│   └── 3_data_drift_monitoring.ipynb      --> Monitoreo
+│
+├── APP (API y Modelos)
+│   ├── api.py                             --> Aquí se uso la biblioteca Flask en ves de Fastapi y Pydantic pues el procesador y el ambiente de la
+                                                ejecutora no pudo procesar las instalaciones y el uso de dichas bibliotecas
+
+│   ├── demo_standalone.py                 --> Predictor standalone: se usó pues era más fácil para permitir pruebas inmediatas si hay problemas con
+                                                Docker/Kubernetes y hace un flujo completo de preprocesamiento y predicción en un solo archivo, sin 
+                                                necesidad de buscar otros y ejecutar rápidamente.
+│   ├── model.joblib                       --> Modelo simple
+│   └── model_cv.joblib                    --> Modelo optimizado
+│
+├── Docker (Contenerización)
+│   ├── Dockerfile                         --> Imagen Docker
+│   └── requirements.txt                   --> Dependencias
+│
+├── k8s (Kubernetes)                       --> Aquí se instalaron en el Docker Desktop los Kubernetes
+│   ├── deployment.yaml                    --> Deployment Kubernetes
+│   └── service.yaml                       --> Service Kubernetes
+│
+├── Scripts (Automatización)
+│   ├── deploy_k8s.py                      --> Despliegue K8s general
+│   ├── test_ci_locally.py                 --> Tests CI locales                       
+│   ├── test_de_uso.py                     --> Pruebas para profesor o usuario
+│
+├── Tests (Visualización)
+│   ├── test_api.py                        --> Tests API  
+├── Dashboard (Visualización)
+│   ├── app.py                             --> Servidor dashboard
+│   └── templates/
+│       └── index.html                     --> Página web dashboard
+│
+├── .github/workflows/ (CI/CD)
+│   └── ci.yml                             --> GitHub Actions
+│
+├── heart.csv                              --> Dataset 
+├── README.md                              --> Documentación
+├── Manual.txt                          
+
+ETAPAS IMPLEMENTADAS 
+===========================================
+
+ETAPA 0: CORRECCIÓN DE MODELOS
+-------------------------------
+ARCHIVO: notebooks/0_fix_models.ipynb
+
+PROBLEMA: Los modelos .joblib estaban vacíos o corruptos
+SOLUCIÓN: 
+- Regeneración completa de modelos
+- Verificación de integridad
+- Creación de modelo simple y optimizado
+
+RESULTADO:
+model.joblib - Modelo GradientBoosting simple
+model_cv.joblib - Modelo optimizado con GridSearchCV
+
+ETAPA 1: DATA LEAKAGE Y MÚLTIPLES MODELOS
+------------------------------------------
+ARCHIVO: notebooks/1_model_leakage_demo.ipynb
+
+OBJETIVO: Demostrar el impacto del data leakage vs flujo correcto
+
+IMPLEMENTACIÓN:
+1. Creación variable artificial con data leakage
+2. Comparación flujo incorrecto vs correcto
+3. Entrenamiento de 5 modelos con Pipeline
+4. Ranking comparativo por AUC y Accuracy
+
+MODELOS COMPARADOS:
+1. GradientBoosting - AUC: 0.9372, Accuracy: 89.1%
+2. KNeighbors - AUC: 0.9333, Accuracy: 88.0%
+3. LogisticRegression - AUC: 0.9320, Accuracy: 88.6%
+4. RandomForest - AUC: 0.9320, Accuracy: 85.9%
+5. SVC - AUC: 0.9311, Accuracy: 86.4%
+
+HALLAZGOS: Data leakage infla el AUC en 0.0689 (de 0.9311 a 1.0000)
+
+ETAPA 2: PIPELINE CON VALIDACIÓN CRUZADA
+----------------------------------------
+ARCHIVO: notebooks/2_model_pipeline_cv.ipynb
+
+OBJETIVO: Implementación correcta con validación segura
+
+CARACTERÍSTICAS:
+División estratificada ANTES del escalado
+Pipeline con GridSearchCV
+Validación cruzada 5-fold estratificada
+Optimización de hiperparámetros
+Evaluación con múltiples métricas
+
+MÉTRICAS IMPLEMENTADAS:
+- AUC Score
+- Accuracy
+- Precision
+- Recall  
+- F1-Score
+- Specificity
+- Matrices de confusión
+- Curvas ROC
+
+ETAPA 3: API FLASK Y DOCKER
+---------------------------
+ARCHIVOS: app/api_flask.py, docker/Dockerfile
+
+API ENDPOINTS IMPLEMENTADOS:
+GET  /health       → Estado de la API y modelo
+GET  /model-info   → Información del modelo
+POST /predict      → Predicción de enfermedad cardíaca
+
+FUNCIONALIDADES API:
+Validación de datos de entrada
+Preprocesamiento automático (one-hot encoding)
+Manejo de errores robusto
+Respuestas JSON estandarizadas
+Documentación automática
+
+DOCKER:
+Imagen optimizada con Python 3.10-slim
+Configuración de seguridad 
+Variables de entorno para producción
+Build multi-etapa eficiente
+
+ETAPA 4: KUBERNETES LOCAL
+-------------------------
+ARCHIVOS: k8s/deployment.yaml, k8s/service.yaml
+
+CONFIGURACIÓN KUBERNETES:
+Deployment con 2 réplicas
+Service tipo LoadBalancer
+Liveness y readiness probes
+Limits de recursos (CPU/Memory)
+imagePullPolicy: Never (para imágenes locales)
+Variables de entorno optimizadas
+
+PROBLEMAS:
+Error: "ImagePullBackOff" - SOLUCIÓN: imagePullPolicy: Never
+Error: WSL no disponible - SOLUCIÓN: Scripts de diagnóstico
+Error: Puertos ocupados - SOLUCIÓN: Configuración alternativa
+
+ETAPA 5: GITHUB ACTIONS CI/CD
+-----------------------------
+ARCHIVO: .github/workflows/ci.yml
+
+PIPELINE CI/CD COMPLETO:
+Trigger en push y pull requests
+Tests automáticos de modelo y datos
+Build de imagen Docker
+Verificaciones de seguridad
+Multi-entorno Python (3.9, 3.10)
+
+JOBS IMPLEMENTADOS:
+1. test - Verificación de modelo y datos
+2. build-docker - Construcción de imagen
+3. security-scan - Chequeos de seguridad
+
+ETAPA 6: MONITOREO DE DERIVA DE DATOS
+-------------------------------------
+ARCHIVO: notebooks/3_data_drift_monitoring.ipynb
+
+SISTEMA DE MONITOREO:
+Análisis de deriva por feature
+Detección automática de cambios >10%
+Visualización de distribuciones
+Performance comparativo
+Recomendaciones automáticas
+
+MÉTRICAS DE DERIVA:
+- Cambio porcentual por feature
+- Features con deriva significativa
+- Impacto en performance del modelo
+- Alertas automáticas
+
+SCRIPTS DE AUTOMATIZACIÓN CREADOS
+=====================================
+
+SCRIPT: scripts/test_ci_locally.py
+- Simula GitHub Actions localmente
+- Verifica todos los componentes
+- Checks de sintaxis y funcionalidad
+
+SCRIPT: scripts/k8s_diagnostic.py
+- Diagnóstico completo de Kubernetes
+- Verificación de pods y servicios
+- Logs automáticos
+- Solución de problemas
+
+SCRIPT: scripts/test_de_uso.py
+- Pruebas automatizadas para evaluación
+- Verificación de todos los componentes
+- Reporte de estado completo
+
+
+DASHBOARD VISUAL IMPLEMENTADO
+=================================
+
+ARCHIVOS: dashboard/app.py, dashboard/templates/index.html
+
+FUNCIONALIDADES:
+Resumen visual completo del proyecto
+Gráficas de performance de modelos
+Estado de todas las etapas
+Información del dataset
+
+PRUEBAS PARA EL PROFESOR
+===========================
+
+VERIFICACIÓN COMPLETA
+-------------------------------
+python scripts/test_de_uso.py
+
+Estructura del proyecto
+Docker instalado y funcionando
+Kubernetes configurado
+API respondiendo (si está ejecutándose)
+Predicciones funcionando
+
+EJECUCIÓN DE VERIFICACIÓN: 
+------------------------------
+1. API
+python app/api.py
+
+2.Pruebas API  
+python tests/test_api.py
+
+3. Construir imagen Docker
+docker build -t heart-api-flask -f docker/Dockerfile .
+
+docker run -p 5000:5000 heart-api-flask
+
+python tests/test_api.py
+
+4. Dashboard
+cd dashboard
+python app.py
+
+5. Verificación CI 
+python scripts/test_de_uso.py
+python scripts/test_ci_locally.py
