@@ -1,5 +1,5 @@
 # Heart Disease Prediction - MLOps Pipeline
-
+# Autores: María Clara Ávila Chinchia, David Alejandro Ibáñez Barrios y Mateo José Giraldo Castillo
 Proyecto completo de Machine Learning que implementa un pipeline de MLOps para predecir enfermedades cardíacas, desde el modelado hasta el despliegue en producción.
 
 ## Etapas del Proyecto
@@ -54,4 +54,5 @@ python app/api_flask.py
 curl http://localhost:5000/health
 
 # O si no tienes curl:
+
 python -c "import requests; print(requests.get('http://localhost:5000/health').json())"
